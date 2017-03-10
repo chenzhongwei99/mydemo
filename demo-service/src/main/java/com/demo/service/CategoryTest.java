@@ -3,6 +3,9 @@ package com.demo.service;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.demo.bean.Category;
+import com.demo.common.DataBaseUtils;
+import com.demo.dao.CategoryDao;
+import org.apache.ibatis.session.SqlSession;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.jsoup.select.Elements;
@@ -83,7 +86,10 @@ public class CategoryTest implements PageProcessor {
                         }
                     }
                 }
-                System.out.println(categoryList);
+                SqlSession sqlSession = DataBaseUtils.sessionFactory.openSession();
+                CategoryDao categoryDao = sqlSession.getMapper(CategoryDao.class);
+                categoryDao.insertCategory(categoryList);
+                sqlSession.commit();
             }
         } catch (Exception e) {
             e.printStackTrace();

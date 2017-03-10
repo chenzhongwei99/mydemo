@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.demo.dao.CategoryDao">
+
+    <insert id="insertCategory" parameterType="java.util.List">
+        insert into CATEGORY (CATEGORY_URL,CATEGORY_NAME,CHILD_URL,SPIDER_DATE)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.categoryUrl},#{item.categoryName},#{item.childUrl},#{item.spiderDate})
+        </foreach>
+    </insert>
+</mapper>
