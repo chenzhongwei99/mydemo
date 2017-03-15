@@ -13,7 +13,21 @@ import java.util.List;
  **/
 public interface CategoryDao {
 
+    /**
+     * 添加类别
+     *
+     * @param categoryList
+     * @author chenzhongwei
+     */
     public void insertCategory(List<Category> categoryList);
+
+    /**
+     * 查询当天的类别数据
+     *
+     * @return 类别集合
+     * @author chenzhongwei
+     */
+    public List<Category> searchCategoryListByNow();
 }
 
 

@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.demo.dao.ProductDao">
+
+    <resultMap id="product"
+               type="com.demo.bean.Product">
+        <id property="id" column="ID"/>
+        <result property="firstCategory" column="FIRST_CATEGORY"/>
+        <result property="secondCategory" column="SECOND_CATEGORY"/>
+        <result property="skuId" column="SKU_ID"/>
+        <result property="productName" column="PRODUCT_NAME"/>
+        <result property="shopId" column="SHOP_ID"/>
+        <result property="shopName" column="SHOP_NAME"/>
+        <result property="imageUrl" column="IMAGE_URL"/>
+        <result property="isSelfSupport" column="IS_SELF_SUPPORT"/>
+        <result property="goodCount" column="GOOD_COUNT"/>
+        <result property="generalCount" column="GENERAL_COUNT"/>
+        <result property="poorCount" column="PRICE"/>
+        <result property="price" column="POOR_COUNT"/>
+        <result property="spiderDate" column="SPIDER_DATE"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        ID,FIRST_CATEGORY,SECOND_CATEGORY,SKU_ID,PRODUCT_NAME,SHOP_ID,SHOP_NAME,IMAGE_URL,IS_SELF_SUPPORT,GOOD_COUNT,GENERAL_COUNT,PRICE,POOR_COUNT,SPIDER_DATE
+    </sql>
+
+    <insert id="insertProduct" parameterType="java.util.List">
+        insert into PRODUCT (FIRST_CATEGORY,SECOND_CATEGORY,SKU_ID,PRODUCT_NAME,SHOP_ID,SHOP_NAME,IMAGE_URL,IS_SELF_SUPPORT,GOOD_COUNT,GENERAL_COUNT,PRICE,POOR_COUNT,SPIDER_DATE)
+        values
+        <foreach collection="list" item="item" index="index" separator=",">
+            (#{item.firstCategory},#{item.secondCategory},#{item.skuId},#{item.productName},#{item.shopId},#{item.shopName},#{item.imageUrl},#{item.isSelfSupport},#{item.goodCount},#{item.generalCount},#{item.poorCount},#{item.price},#{item.spiderDate})
+        </foreach>
+    </insert>
+
+    <select id="searchProductListByNow" resultMap="product">
+        select
+        <include refid="base_column_list"/>
+        FROM PRODUCT WHERE SPIDER_DATE=date_format(now(),'%Y-%c-%d')
+    </select>
+</mapper>

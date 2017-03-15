@@ -2,11 +2,29 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
 <mapper namespace="com.demo.dao.CategoryDao">
 
+    <resultMap id="category"
+               type="com.demo.bean.Category">
+        <id property="id" column="ID"/>
+        <result property="categoryName" column="CATEGORY_NAME"/>
+        <result property="childUrl" column="CHILD_URL"/>
+        <result property="spiderDate" column="SPIDER_DATE"/>
+    </resultMap>
+
+    <sql id="base_column_list">
+        ID,CATEGORY_NAME,CHILD_URL,SPIDER_DATE
+    </sql>
+
     <insert id="insertCategory" parameterType="java.util.List">
-        insert into CATEGORY (CATEGORY_URL,CATEGORY_NAME,CHILD_URL,SPIDER_DATE)
+        insert into CATEGORY (CATEGORY_NAME,CHILD_URL,SPIDER_DATE)
         values
         <foreach collection="list" item="item" index="index" separator=",">
-            (#{item.categoryUrl},#{item.categoryName},#{item.childUrl},#{item.spiderDate})
+            (#{item.categoryName},#{item.childUrl},#{item.spiderDate})
         </foreach>
     </insert>
+
+    <select id="searchCategoryListByNow" resultMap="category">
+        select
+        <include refid="base_column_list"/>
+        FROM CATEGORY WHERE SPIDER_DATE=date_format(now(),'%Y-%c-%d')
+    </select>
 </mapper>

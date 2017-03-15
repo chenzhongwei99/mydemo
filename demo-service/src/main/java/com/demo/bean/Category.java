@@ -10,7 +10,6 @@ import java.util.Date;
  **/
 public class Category {
     private Integer id;
-    private String categoryUrl;
     private String categoryName;
     private String childUrl;
     private Date spiderDate;
@@ -21,14 +20,6 @@ public class Category {
 
     public void setId(Integer id) {
         this.id = id;
-    }
-
-    public String getCategoryUrl() {
-        return categoryUrl;
-    }
-
-    public void setCategoryUrl(String categoryUrl) {
-        this.categoryUrl = categoryUrl;
     }
 
     public String getCategoryName() {
@@ -59,7 +50,6 @@ public class Category {
     public String toString() {
         return "Category{" +
                 "id=" + id +
-                ", categoryUrl='" + categoryUrl + '\'' +
                 ", categoryName='" + categoryName + '\'' +
                 ", childUrl='" + childUrl + '\'' +
                 ", spiderDate=" + spiderDate +

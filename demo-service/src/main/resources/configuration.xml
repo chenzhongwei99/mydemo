@@ -23,6 +23,7 @@
 
     <mappers>
         <mapper resource="mapper/Category-Mapper.xml"/>
+        <mapper resource="mapper/Product-Mapper.xml"/>
     </mappers>
 
 </configuration>
