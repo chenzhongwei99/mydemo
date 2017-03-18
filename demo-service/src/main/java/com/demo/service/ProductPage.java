@@ -31,6 +31,12 @@ public class ProductPage implements PageProcessor {
 
     private static ProductDao productDao = sqlSession.getMapper(ProductDao.class);
 
+    private static String PRICE_URL = "https://p.3.cn/prices/mgets";
+
+    private static String COMMENTS_URL = "https://club.jd.com/comment/productCommentSummaries.action";
+
+    private static String SHOP_URL = "https://chat1.jd.com/api/checkChat";
+
     private Site site = Site.me().setRetryTimes(3)
             .addCookie("list.jd.com", "__jda", "122270672.480222635.1486966743.1489471336.1489475875.35")
             .addCookie("list.jd.com", "unpl", "V2_ZzNtbUIFEx0hWEJccxxYAWJWRg4RVkMTcgtGXSxLDwAwURMOclRCFXMUR1ZnGFUUZgsZWUBcQBZFCEdkex5fDGQzF19GXkIVcAt2ZHgZbA1XBhtcQVRAEncMdmR8KWzR8qjK1tUFAlesuOOC0bdsAmIEFFRLUkcldDhHZDB3XUhiChNeQVREF3E4R2R4")
@@ -73,6 +79,95 @@ public class ProductPage implements PageProcessor {
         Date date = new Date();
         Html html = page.getHtml();
         List<Product> productList = new ArrayList<Product>();
+        /*StringBuffer priceBuffer = new StringBuffer();
+        StringBuffer commentBuffer = new StringBuffer();
+        StringBuffer shopBuffer = new StringBuffer();
+        Map<String, String> priceParams = new HashMap<String, String>();
+        Map<String, String> commentParams = new HashMap<String, String>();
+        Map<String, String> shopParams = new HashMap<String, String>();
+        for (int i = 0; i < 60; i++) {
+            String skuId = html.xpath("//div[@id='J_searchWrap']/div[@id='J_container']/div[@id='J_main']/div[@class='m-list']/div[@class='ml-wrap']/div[@id='plist']/ul[@class='gl-warp clearfix']/li[" + (i + 1) + "]/div[@class='gl-i-wrap j-sku-item']/@data-sku").toString();
+            if (StringUtils.isNotEmpty(skuId)) {
+                priceBuffer.append("J_").append(skuId).append(",");
+                commentBuffer.append(skuId).append(",");
+                shopBuffer.append(skuId).append(",");
+            }
+        }
+        priceParams.put("skuIds", priceBuffer.toString().substring(0, priceBuffer.toString().length() - 1));
+        commentParams.put("referenceIds", commentBuffer.toString().substring(0, commentBuffer.toString().length() - 1));
+        shopParams.put("pidList", shopBuffer.toString().substring(0, shopBuffer.toString().length() - 1));
+        String priceResult = HttpClientUtils.doGet(PRICE_URL, priceParams, 0, null);
+        JSONArray priceJSONArray = JSONArray.parseArray(priceResult);
+        String commentResult = HttpClientUtils.doGet(COMMENTS_URL, commentParams, 0, null);
+        JSONArray commentJSONArray = JSONObject.parseObject(commentResult).getJSONArray("CommentsCount");
+        String shopResult = HttpClientUtils.doGet(SHOP_URL, shopParams, 0, "UTF-8");
+        JSONArray shopJSONArray = JSONArray.parseArray(shopResult.substring(5, shopResult.length() - 2));
+
+        Map<String, Price> priceMap = new HashMap<String, Price>();
+        Map<String, Comment> commentMap = new HashMap<String, Comment>();
+        Map<String, Shop> shopMap = new HashMap<String, Shop>();
+        for (int i = 0; i < priceJSONArray.size(); i++) {
+            JSONObject priceJSONObject = priceJSONArray.getJSONObject(i);
+            Set<Map.Entry<String, Object>> priceEntry = priceJSONObject.entrySet();
+            Price price=new Price();
+            for (Map.Entry<String, Object> entry : priceEntry) {
+                String key = entry.getKey();
+                if (key.equals("id")) {
+                    price.setSkuId(entry.getValue().toString().replace("J_", ""));
+                }
+                if (key.equals("p")) {
+                    price.setPrice(Double.valueOf(entry.getValue().toString()));
+                }
+            }
+            priceMap.put(price.getSkuId(), price);
+        }
+
+        for (int i = 0; i < commentJSONArray.size(); i++) {
+            JSONObject commentJSONObject = commentJSONArray.getJSONObject(i);
+            Set<Map.Entry<String, Object>> commentEntry = commentJSONObject.entrySet();
+            Comment comment=new Comment();
+            for (Map.Entry<String, Object> entry : commentEntry) {
+                String key = entry.getKey();
+                if (key.equals("SkuId")) {
+                    comment.setSkuId(entry.getValue().toString());
+                }
+                if (key.equals("GoodCount")) {
+                    comment.setGoodCount(Integer.valueOf(entry.getValue().toString()));
+                }
+                if (key.equals("GeneralCount")) {
+                    comment.setGeneralCount(Integer.valueOf(entry.getValue().toString()));
+                }if (key.equals("PoorCount")) {
+                    comment.setPoorCount(Integer.valueOf(entry.getValue().toString()));
+                }
+            }
+            commentMap.put(comment.getSkuId(), comment);
+        }
+
+        for (int i = 0; i < shopJSONArray.size(); i++) {
+            JSONObject shopJSONObject = shopJSONArray.getJSONObject(i);
+            Set<Map.Entry<String, Object>> shopEntry = shopJSONObject.entrySet();
+            Shop shop=new Shop();
+            for (Map.Entry<String, Object> entry : shopEntry) {
+                String key = entry.getKey();
+                if (key.equals("pid")) {
+                    shop.setSkuId(entry.getValue().toString());
+                }
+                if (key.equals("shopId")) {
+                    shop.setShopId(entry.getValue().toString());
+                }
+                if (key.equals("seller")) {
+                    shop.setShopName(entry.getValue().toString());
+                }if (key.equals("venderId")) {
+                    shop.setVenderId(entry.getValue().toString());
+                }
+            }
+            if(shop.getShopId().equals(shop.getVenderId())){
+                shop.setIsSelfSupport(1);
+            }
+            shopMap.put(shop.getSkuId(), shop);
+        }*/
+
+
         for (int i = 0; i < 60; i++) {
             String skuId = html.xpath("//div[@id='J_searchWrap']/div[@id='J_container']/div[@id='J_main']/div[@class='m-list']/div[@class='ml-wrap']/div[@id='plist']/ul[@class='gl-warp clearfix']/li[" + (i + 1) + "]/div[@class='gl-i-wrap j-sku-item']/@data-sku").toString();
             if (StringUtils.isNotEmpty(skuId)) {
@@ -86,6 +181,20 @@ public class ProductPage implements PageProcessor {
                 product.setProductName(html.xpath("//div[@id='J_searchWrap']/div[@id='J_container']/div[@id='J_main']/div[@class='m-list']/div[@class='ml-wrap']/div[@id='plist']/ul[@class='gl-warp clearfix']/li[" + (i + 1) + "]/div[@class='gl-i-wrap j-sku-item']/div[@class='p-name']/a/em/text()").toString());
                 product.setShopName(html.xpath("//div[@id='J_searchWrap']/div[@id='J_container']/div[@id='J_main']/div[@class='m-list']/div[@class='ml-wrap']/div[@id='plist']/ul[@class='gl-warp clearfix']/li[" + (i + 1) + "]/div[@class='gl-i-wrap j-sku-item']/div[@class='p-shop']/@data-shop_name").toString());
                 product.setSpiderDate(date);
+
+                /*Price price=priceMap.get(skuId);
+                product.setPrice(price.getPrice());
+
+                Comment comment=commentMap.get(skuId);
+                product.setGoodCount(comment.getGoodCount());
+                product.setGeneralCount(comment.getGeneralCount());
+                product.setPoorCount(comment.getPoorCount());
+
+                Shop shop=shopMap.get(skuId);
+                product.setShopId(shop.getShopId());
+                product.setShopName(shop.getShopName());
+                product.setIsSelfSupport(shop.getIsSelfSupport());*/
+
                 productList.add(product);
             }
         }

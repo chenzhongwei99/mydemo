@@ -41,7 +41,7 @@ public class CategoryTest implements PageProcessor {
         CategoryTest categoryTest = new CategoryTest();
         Spider spider = Spider.create(categoryTest);
         spider.addUrl("https://baby.jd.com");
-        spider.thread(10).run();
+        spider.thread(100).run();
         stopWatch.stop();
         System.out.println("类别花费时间----------------------------------- " + stopWatch.getTime());
     }
