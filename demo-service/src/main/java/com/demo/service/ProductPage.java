@@ -1,7 +1,6 @@
 package com.demo.service;
 
-import com.demo.bean.Category;
-import com.demo.bean.Product;
+import com.demo.bean.*;
 import com.demo.common.DataBaseUtils;
 import com.demo.dao.CategoryDao;
 import com.demo.dao.ProductDao;
@@ -15,9 +14,8 @@ import us.codecraft.webmagic.Spider;
 import us.codecraft.webmagic.processor.PageProcessor;
 import us.codecraft.webmagic.selector.Html;
 
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * 商品分页页面测试类
@@ -31,11 +29,25 @@ public class ProductPage implements PageProcessor {
 
     private static ProductDao productDao = sqlSession.getMapper(ProductDao.class);
 
-    private static String PRICE_URL = "https://p.3.cn/prices/mgets";
+    private static final String PRICE_URL = "https://p.3.cn/prices/mgets";
 
-    private static String COMMENTS_URL = "https://club.jd.com/comment/productCommentSummaries.action";
+    private static final String COMMENTS_URL = "https://club.jd.com/comment/productCommentSummaries.action";
 
-    private static String SHOP_URL = "https://chat1.jd.com/api/checkChat";
+    private static final String SHOP_URL = "https://chat1.jd.com/api/checkChat";
+
+    private static final ConcurrentHashMap<String, Product> productMap = new ConcurrentHashMap<String, Product>();
+
+    private static final ConcurrentHashMap<String, Price> priceMap = new ConcurrentHashMap<String, Price>();
+
+    private static final ConcurrentHashMap<String, Comment> commentMap = new ConcurrentHashMap<String, Comment>();
+
+    private static final ConcurrentHashMap<String, Shop> shopMap = new ConcurrentHashMap<String, Shop>();
+
+    private static final ExecutorService pricePool= Executors.newFixedThreadPool(100);
+
+    private static final ExecutorService commentPool= Executors.newFixedThreadPool(100);
+
+    private static final ExecutorService shopPool= Executors.newFixedThreadPool(100);
 
     private Site site = Site.me().setRetryTimes(3)
             .addCookie("list.jd.com", "__jda", "122270672.480222635.1486966743.1489471336.1489475875.35")
@@ -69,10 +81,197 @@ public class ProductPage implements PageProcessor {
                     }
                 }
             }
-            spider.thread(50).run();
+            spider.thread(100).run();
         }
         stopWatch.stop();
         System.out.println("商品花费时间----------------------------------- " + stopWatch.getTime());
+        System.out.println("商品数量-------------------------------------" + productMap.size());
+
+        stopWatch.reset();
+        stopWatch.start();
+        int count = productMap.size();
+        int productNum_http = 0;
+        int currentPage_http = 1;
+        int remainder_http = count % 100;
+        int totalPage_http = (remainder_http == 0 ? count / 100 : (count / 100) + 1);
+        StringBuffer priceBuffer = new StringBuffer();
+        StringBuffer commentBuffer = new StringBuffer();
+        StringBuffer shopBuffer = new StringBuffer();
+        Map<String, String> priceParams = new HashMap<String, String>();
+        Map<String, String> commentParams = new HashMap<String, String>();
+        Map<String, String> shopParams = new HashMap<String, String>();
+
+
+        List<Future<Map<String, Price>>> priceFutureList=new ArrayList<Future<Map<String, Price>>>();
+        List<Future<Map<String, Comment>>> commentFutureList=new ArrayList<Future<Map<String, Comment>>>();
+        List<Future<Map<String, Shop>>> shopFutureList=new ArrayList<Future<Map<String, Shop>>>();
+
+        for (Map.Entry<String, Product> productEntry : productMap.entrySet()) {
+            productNum_http++;
+            String skuId = productEntry.getKey();
+            priceBuffer.append("J_").append(skuId).append(",");
+            commentBuffer.append(skuId).append(",");
+            shopBuffer.append(skuId).append(",");
+            if ((currentPage_http < totalPage_http && productNum_http % 100 == 0) || (currentPage_http == totalPage_http && productNum_http == remainder_http)) {
+                currentPage_http++;
+                priceParams.put("skuIds", priceBuffer.toString().substring(0, priceBuffer.toString().length() - 1));
+                commentParams.put("referenceIds", commentBuffer.toString().substring(0, commentBuffer.toString().length() - 1));
+                shopParams.put("pidList", shopBuffer.toString().substring(0, shopBuffer.toString().length() - 1));
+
+
+                priceFutureList.add(pricePool.submit(new PriceCallable(priceParams)));
+                commentFutureList.add(commentPool.submit(new CommentCallable(commentParams)));
+                shopFutureList.add(shopPool.submit(new ShopCallable(shopParams)));
+
+                priceBuffer = new StringBuffer();
+                commentBuffer = new StringBuffer();
+                shopBuffer = new StringBuffer();
+
+                /*String priceResult = HttpClientUtils.doGet(PRICE_URL, priceParams, 0, null);
+                JSONArray priceJSONArray = JSONArray.parseArray(priceResult);
+                String commentResult = HttpClientUtils.doGet(COMMENTS_URL, commentParams, 0, null);
+                JSONArray commentJSONArray = JSONObject.parseObject(commentResult).getJSONArray("CommentsCount");
+                String shopResult = HttpClientUtils.doGet(SHOP_URL, shopParams, 0, "UTF-8");
+                JSONArray shopJSONArray = JSONArray.parseArray(shopResult.substring(5, shopResult.length() - 2));
+                priceBuffer = new StringBuffer();
+                commentBuffer = new StringBuffer();
+                shopBuffer = new StringBuffer();
+                for (int i = 0; i < priceJSONArray.size(); i++) {
+                    JSONObject priceJSONObject = priceJSONArray.getJSONObject(i);
+                    Set<Map.Entry<String, Object>> priceEntry = priceJSONObject.entrySet();
+                    Price price = new Price();
+                    for (Map.Entry<String, Object> entry : priceEntry) {
+                        String key = entry.getKey();
+                        if (key.equals("id")) {
+                            price.setSkuId(entry.getValue().toString().replace("J_", ""));
+                        }
+                        if (key.equals("p")) {
+                            price.setPrice(Double.valueOf(entry.getValue().toString()));
+                        }
+                    }
+                    priceMap.put(price.getSkuId(), price);
+                }
+
+                for (int i = 0; i < commentJSONArray.size(); i++) {
+                    JSONObject commentJSONObject = commentJSONArray.getJSONObject(i);
+                    Set<Map.Entry<String, Object>> commentEntry = commentJSONObject.entrySet();
+                    Comment comment = new Comment();
+                    for (Map.Entry<String, Object> entry : commentEntry) {
+                        String key = entry.getKey();
+                        if (key.equals("SkuId")) {
+                            comment.setSkuId(entry.getValue().toString());
+                        }
+                        if (key.equals("GoodCount")) {
+                            comment.setGoodCount(Integer.valueOf(entry.getValue().toString()));
+                        }
+                        if (key.equals("GeneralCount")) {
+                            comment.setGeneralCount(Integer.valueOf(entry.getValue().toString()));
+                        }
+                        if (key.equals("PoorCount")) {
+                            comment.setPoorCount(Integer.valueOf(entry.getValue().toString()));
+                        }
+                    }
+                    commentMap.put(comment.getSkuId(), comment);
+                }
+
+                for (int i = 0; i < shopJSONArray.size(); i++) {
+                    JSONObject shopJSONObject = shopJSONArray.getJSONObject(i);
+                    Set<Map.Entry<String, Object>> shopEntry = shopJSONObject.entrySet();
+                    Shop shop = new Shop();
+                    for (Map.Entry<String, Object> entry : shopEntry) {
+                        String key = entry.getKey();
+                        if (key.equals("pid")) {
+                            shop.setSkuId(entry.getValue().toString());
+                        }
+                        if (key.equals("shopId")) {
+                            shop.setShopId(entry.getValue().toString());
+                        }
+                        if (key.equals("seller")) {
+                            shop.setShopName(entry.getValue().toString());
+                        }
+                        if (key.equals("venderId")) {
+                            shop.setVenderId(entry.getValue().toString());
+                        }
+                    }
+                    if (shop.getShopId().equals(shop.getVenderId())) {
+                        shop.setIsSelfSupport(1);
+                    }
+                    shopMap.put(shop.getSkuId(), shop);
+                }*/
+            }
+        }
+
+
+        for(Future<Map<String, Price>> future:priceFutureList){
+            try {
+                priceMap.putAll(future.get());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        for(Future<Map<String, Comment>> future:commentFutureList){
+            try {
+                commentMap.putAll(future.get());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        for(Future<Map<String, Shop>> future:shopFutureList){
+            try {
+                shopMap.putAll(future.get());
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+
+
+        stopWatch.stop();
+        System.out.println("商品附加属性花费时间----------------------------------- " + stopWatch.getTime());
+        System.out.println("价格数量-------------------------------------" + priceMap.size());
+        System.out.println("评论数量-------------------------------------" + commentMap.size());
+        System.out.println("店铺数量-------------------------------------" + shopMap.size());
+
+
+        stopWatch.reset();
+        stopWatch.start();
+
+        int productNum_database = 0;
+        int currentPage_database = 1;
+        int remainder_database = count % 1000;
+        int totalPage_database = (remainder_database == 0 ? count / 1000 : (count / 1000) + 1);
+        List<Product> productList = new ArrayList<Product>();
+
+        for (Map.Entry<String, Product> productEntry : productMap.entrySet()) {
+            productNum_database++;
+            Product product = productEntry.getValue();
+            String skuId = productEntry.getKey();
+            Price price = priceMap.get(skuId);
+            product.setPrice(price.getPrice());
+
+            Comment comment = commentMap.get(skuId);
+            product.setGoodCount(comment.getGoodCount());
+            product.setGeneralCount(comment.getGeneralCount());
+            product.setPoorCount(comment.getPoorCount());
+
+            Shop shop = shopMap.get(skuId);
+            product.setShopId(shop.getShopId());
+            product.setShopName(shop.getShopName());
+            product.setIsSelfSupport(shop.getIsSelfSupport());
+
+            productList.add(product);
+
+            if ((currentPage_database < totalPage_database && productNum_database % 1000 == 0) || (currentPage_database == totalPage_database && productNum_database == remainder_database)) {
+                currentPage_database++;
+                synchronized (ProductPage.class) {
+                    productDao.insertProduct(productList);
+                    sqlSession.commit();
+//                        System.out.println(productList);
+                }
+            }
+        }
     }
 
     public void process(Page page) {
@@ -195,18 +394,20 @@ public class ProductPage implements PageProcessor {
                 product.setShopName(shop.getShopName());
                 product.setIsSelfSupport(shop.getIsSelfSupport());*/
 
-                productList.add(product);
+                try {
+                    productMap.put(skuId, product);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+//                productList.add(product);
             }
+
         }
-        try {
-            synchronized (this) {
-                productDao.insertProduct(productList);
-                sqlSession.commit();
-                System.out.println(productList);
-            }
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        /*synchronized (this) {
+            productDao.insertProduct(productList);
+            sqlSession.commit();
+//                        System.out.println(productList);
+        }*/
     }
 
     public Site getSite() {
