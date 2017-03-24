@@ -29,11 +29,6 @@ public class ProductPage implements PageProcessor {
 
     private static ProductDao productDao = sqlSession.getMapper(ProductDao.class);
 
-    private static final String PRICE_URL = "https://p.3.cn/prices/mgets";
-
-    private static final String COMMENTS_URL = "https://club.jd.com/comment/productCommentSummaries.action";
-
-    private static final String SHOP_URL = "https://chat1.jd.com/api/checkChat";
 
     private static final ConcurrentHashMap<String, Product> productMap = new ConcurrentHashMap<String, Product>();
 
@@ -43,11 +38,9 @@ public class ProductPage implements PageProcessor {
 
     private static final ConcurrentHashMap<String, Shop> shopMap = new ConcurrentHashMap<String, Shop>();
 
-    private static final ExecutorService pricePool= Executors.newFixedThreadPool(100);
+    private static final ConcurrentHashMap<String, Object> errorMap = new ConcurrentHashMap<String, Object>();
 
-    private static final ExecutorService commentPool= Executors.newFixedThreadPool(100);
-
-    private static final ExecutorService shopPool= Executors.newFixedThreadPool(100);
+    private static final ExecutorService productPool = Executors.newFixedThreadPool(100);
 
     private Site site = Site.me().setRetryTimes(3)
             .addCookie("list.jd.com", "__jda", "122270672.480222635.1486966743.1489471336.1489475875.35")
@@ -97,14 +90,8 @@ public class ProductPage implements PageProcessor {
         StringBuffer priceBuffer = new StringBuffer();
         StringBuffer commentBuffer = new StringBuffer();
         StringBuffer shopBuffer = new StringBuffer();
-        Map<String, String> priceParams = new HashMap<String, String>();
-        Map<String, String> commentParams = new HashMap<String, String>();
-        Map<String, String> shopParams = new HashMap<String, String>();
 
-
-        List<Future<Map<String, Price>>> priceFutureList=new ArrayList<Future<Map<String, Price>>>();
-        List<Future<Map<String, Comment>>> commentFutureList=new ArrayList<Future<Map<String, Comment>>>();
-        List<Future<Map<String, Shop>>> shopFutureList=new ArrayList<Future<Map<String, Shop>>>();
+        List<Future<Map<String, Object>>> productFutureList = new ArrayList<Future<Map<String, Object>>>();
 
         for (Map.Entry<String, Product> productEntry : productMap.entrySet()) {
             productNum_http++;
@@ -112,120 +99,50 @@ public class ProductPage implements PageProcessor {
             priceBuffer.append("J_").append(skuId).append(",");
             commentBuffer.append(skuId).append(",");
             shopBuffer.append(skuId).append(",");
-            if ((currentPage_http < totalPage_http && productNum_http % 100 == 0) || (currentPage_http == totalPage_http && productNum_http == remainder_http)) {
+            if ((currentPage_http < totalPage_http && productNum_http % 100 == 0) || (currentPage_http == totalPage_http && productNum_http == count)) {
                 currentPage_http++;
+                Map<String, String> priceParams = new HashMap<String, String>();
+                Map<String, String> commentParams = new HashMap<String, String>();
+                Map<String, String> shopParams = new HashMap<String, String>();
                 priceParams.put("skuIds", priceBuffer.toString().substring(0, priceBuffer.toString().length() - 1));
+                priceParams.put("pdtk", "P3PzkDhJpw4w0yFmUs2CN0wXDoJNFqc0seOdnunEWpHD8XbpSJCPRTAO6nXZTCRh");
+                priceParams.put("pduid", "480222635");
                 commentParams.put("referenceIds", commentBuffer.toString().substring(0, commentBuffer.toString().length() - 1));
                 shopParams.put("pidList", shopBuffer.toString().substring(0, shopBuffer.toString().length() - 1));
 
-
-                priceFutureList.add(pricePool.submit(new PriceCallable(priceParams)));
-                commentFutureList.add(commentPool.submit(new CommentCallable(commentParams)));
-                shopFutureList.add(shopPool.submit(new ShopCallable(shopParams)));
-
-                priceBuffer = new StringBuffer();
-                commentBuffer = new StringBuffer();
-                shopBuffer = new StringBuffer();
-
-                /*String priceResult = HttpClientUtils.doGet(PRICE_URL, priceParams, 0, null);
-                JSONArray priceJSONArray = JSONArray.parseArray(priceResult);
-                String commentResult = HttpClientUtils.doGet(COMMENTS_URL, commentParams, 0, null);
-                JSONArray commentJSONArray = JSONObject.parseObject(commentResult).getJSONArray("CommentsCount");
-                String shopResult = HttpClientUtils.doGet(SHOP_URL, shopParams, 0, "UTF-8");
-                JSONArray shopJSONArray = JSONArray.parseArray(shopResult.substring(5, shopResult.length() - 2));
-                priceBuffer = new StringBuffer();
-                commentBuffer = new StringBuffer();
-                shopBuffer = new StringBuffer();
-                for (int i = 0; i < priceJSONArray.size(); i++) {
-                    JSONObject priceJSONObject = priceJSONArray.getJSONObject(i);
-                    Set<Map.Entry<String, Object>> priceEntry = priceJSONObject.entrySet();
-                    Price price = new Price();
-                    for (Map.Entry<String, Object> entry : priceEntry) {
-                        String key = entry.getKey();
-                        if (key.equals("id")) {
-                            price.setSkuId(entry.getValue().toString().replace("J_", ""));
-                        }
-                        if (key.equals("p")) {
-                            price.setPrice(Double.valueOf(entry.getValue().toString()));
-                        }
-                    }
-                    priceMap.put(price.getSkuId(), price);
-                }
-
-                for (int i = 0; i < commentJSONArray.size(); i++) {
-                    JSONObject commentJSONObject = commentJSONArray.getJSONObject(i);
-                    Set<Map.Entry<String, Object>> commentEntry = commentJSONObject.entrySet();
-                    Comment comment = new Comment();
-                    for (Map.Entry<String, Object> entry : commentEntry) {
-                        String key = entry.getKey();
-                        if (key.equals("SkuId")) {
-                            comment.setSkuId(entry.getValue().toString());
-                        }
-                        if (key.equals("GoodCount")) {
-                            comment.setGoodCount(Integer.valueOf(entry.getValue().toString()));
-                        }
-                        if (key.equals("GeneralCount")) {
-                            comment.setGeneralCount(Integer.valueOf(entry.getValue().toString()));
-                        }
-                        if (key.equals("PoorCount")) {
-                            comment.setPoorCount(Integer.valueOf(entry.getValue().toString()));
-                        }
-                    }
-                    commentMap.put(comment.getSkuId(), comment);
-                }
-
-                for (int i = 0; i < shopJSONArray.size(); i++) {
-                    JSONObject shopJSONObject = shopJSONArray.getJSONObject(i);
-                    Set<Map.Entry<String, Object>> shopEntry = shopJSONObject.entrySet();
-                    Shop shop = new Shop();
-                    for (Map.Entry<String, Object> entry : shopEntry) {
-                        String key = entry.getKey();
-                        if (key.equals("pid")) {
-                            shop.setSkuId(entry.getValue().toString());
-                        }
-                        if (key.equals("shopId")) {
-                            shop.setShopId(entry.getValue().toString());
-                        }
-                        if (key.equals("seller")) {
-                            shop.setShopName(entry.getValue().toString());
-                        }
-                        if (key.equals("venderId")) {
-                            shop.setVenderId(entry.getValue().toString());
-                        }
-                    }
-                    if (shop.getShopId().equals(shop.getVenderId())) {
-                        shop.setIsSelfSupport(1);
-                    }
-                    shopMap.put(shop.getSkuId(), shop);
+                productFutureList.add(productPool.submit(new ProductCallable(priceParams, commentParams, shopParams)));
+                /*try {
+                    Thread.sleep(500);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
                 }*/
+                priceBuffer = new StringBuffer();
+                commentBuffer = new StringBuffer();
+                shopBuffer = new StringBuffer();
             }
         }
 
 
-        for(Future<Map<String, Price>> future:priceFutureList){
+        for (Future<Map<String, Object>> future : productFutureList) {
             try {
-                priceMap.putAll(future.get());
+                Map<String, Object> map = future.get();
+                for (Map.Entry<String, Object> entry : map.entrySet()) {
+                    String key = entry.getKey();
+                    if (key.contains(ProductCallable.PRICE_FLAG)) {
+                        priceMap.put(key.replace(ProductCallable.PRICE_FLAG, ""), (Price) entry.getValue());
+                    } else if (key.contains(ProductCallable.COMMENTS_FLAG)) {
+                        commentMap.put(key.replace(ProductCallable.COMMENTS_FLAG, ""), (Comment) entry.getValue());
+                    } else if (key.contains(ProductCallable.SHOP_FLAG)) {
+                        shopMap.put(key.replace(ProductCallable.SHOP_FLAG, ""), (Shop) entry.getValue());
+                    } else {
+                        errorMap.put(entry.getKey(), entry.getValue().toString());
+                    }
+
+                }
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
-
-        for(Future<Map<String, Comment>> future:commentFutureList){
-            try {
-                commentMap.putAll(future.get());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
-        for(Future<Map<String, Shop>> future:shopFutureList){
-            try {
-                shopMap.putAll(future.get());
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-
 
 
         stopWatch.stop();
@@ -233,7 +150,7 @@ public class ProductPage implements PageProcessor {
         System.out.println("价格数量-------------------------------------" + priceMap.size());
         System.out.println("评论数量-------------------------------------" + commentMap.size());
         System.out.println("店铺数量-------------------------------------" + shopMap.size());
-
+        System.out.println("错误数量-------------------------------------" + errorMap.size());
 
         stopWatch.reset();
         stopWatch.start();
@@ -263,7 +180,7 @@ public class ProductPage implements PageProcessor {
 
             productList.add(product);
 
-            if ((currentPage_database < totalPage_database && productNum_database % 1000 == 0) || (currentPage_database == totalPage_database && productNum_database == remainder_database)) {
+            if ((currentPage_database < totalPage_database && productNum_database % 1000 == 0) || (currentPage_database == totalPage_database && productNum_database == count)) {
                 currentPage_database++;
                 synchronized (ProductPage.class) {
                     productDao.insertProduct(productList);

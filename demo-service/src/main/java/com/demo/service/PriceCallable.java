@@ -27,7 +27,7 @@ public class PriceCallable implements Callable{
     }
 
     public Object call() throws Exception {
-        String priceResult = HttpClientUtils.doGet(PRICE_URL, priceParams, 0, null);
+        String priceResult = HttpClientUtils.sendGet(HttpClientUtils.getRealUrl(PRICE_URL, priceParams));
         JSONArray priceJSONArray = JSONArray.parseArray(priceResult);
         ConcurrentHashMap<String, Price> priceMap = new ConcurrentHashMap<String, Price>();
         for (int i = 0; i < priceJSONArray.size(); i++) {

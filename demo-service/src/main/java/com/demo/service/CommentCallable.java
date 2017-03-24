@@ -27,7 +27,7 @@ public class CommentCallable implements Callable {
     }
 
     public Object call() throws Exception {
-        String commentResult = HttpClientUtils.doGet(COMMENTS_URL, commentParams, 0, null);
+        String commentResult = HttpClientUtils.sendGet(HttpClientUtils.getRealUrl(COMMENTS_URL, commentParams));
         JSONArray commentJSONArray = JSONObject.parseObject(commentResult).getJSONArray("CommentsCount");
         ConcurrentHashMap<String, Comment> commentMap = new ConcurrentHashMap<String, Comment>();
         for (int i = 0; i < commentJSONArray.size(); i++) {

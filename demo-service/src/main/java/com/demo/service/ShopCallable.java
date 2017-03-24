@@ -27,7 +27,7 @@ public class ShopCallable implements Callable {
     }
 
     public Object call() throws Exception {
-        String shopResult = HttpClientUtils.doGet(SHOP_URL, shopParams, 0, "UTF-8");
+        String shopResult = HttpClientUtils.sendGet(HttpClientUtils.getRealUrl(SHOP_URL, shopParams));
         JSONArray shopJSONArray = JSONArray.parseArray(shopResult.substring(5, shopResult.length() - 2));
         ConcurrentHashMap<String, Shop> shopMap = new ConcurrentHashMap<String, Shop>();
         for (int i = 0; i < shopJSONArray.size(); i++) {

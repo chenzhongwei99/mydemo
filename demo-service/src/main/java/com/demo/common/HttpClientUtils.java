@@ -1,70 +1,89 @@
 package com.demo.common;
 
-import org.apache.commons.httpclient.HttpClient;
-import org.apache.commons.httpclient.methods.GetMethod;
-import org.apache.commons.lang3.StringUtils;
-import org.apache.http.HttpStatus;
 
+import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
+import org.apache.http.client.config.RequestConfig;
+import org.apache.http.client.methods.CloseableHttpResponse;
+import org.apache.http.client.methods.HttpGet;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClientBuilder;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.impl.conn.PoolingHttpClientConnectionManager;
+import org.apache.http.util.EntityUtils;
+
+import java.io.IOException;
 import java.util.Map;
 
-/**
- * http请求工具类
- *
- * @author chenzhongwei
- * @create 2017-03-17 10:12
- **/
+
+
 public class HttpClientUtils {
 
-    public static HttpClient httpClient = new HttpClient();
-    public static final String CHARSET_UTF8 = "UTF-8";
+    private static final PoolingHttpClientConnectionManager poolingHttpClientConnectionManager = new PoolingHttpClientConnectionManager();
 
-    /**
-     * httpclient get请求
-     *
-     * @param url     请求的url
-     * @param params  请求的参数
-     * @param timeOut 超时时间
-     * @param charset 字符集
-     * @return 返回请求返回的数据
-     * @author chenzhongwei
-     */
-    public static String doGet(String url, Map<String, String> params, Integer timeOut, String charset) {
+    static {
+        poolingHttpClientConnectionManager.setMaxTotal(5000);
+        poolingHttpClientConnectionManager.setDefaultMaxPerRoute(1500);
+    }
+
+    private static final HttpHost proxy=new HttpHost("221.180.170.104", 80);
+
+    private static HttpClientBuilder httpClientBuilder=HttpClients.custom();
+
+    private static CloseableHttpClient httpClient = httpClientBuilder.setConnectionManager(poolingHttpClientConnectionManager).build();
+
+    private static final RequestConfig requestConfig = RequestConfig.custom().setProxy(proxy).setSocketTimeout(5000).setConnectTimeout(5000).setConnectionRequestTimeout(5000).build();
+
+
+
+    public static String sendGet(String url) {
+        HttpGet httpGet = new HttpGet(url);
+        httpGet.setConfig(requestConfig);
+        CloseableHttpResponse closeableHttpResponse = null;
+        String result = null;
+        try {
+            closeableHttpResponse = httpClient.execute(httpGet);
+            if(closeableHttpResponse!=null){
+                HttpEntity httpEntity = closeableHttpResponse.getEntity();
+                if(httpEntity!=null){
+                    result = EntityUtils.toString(httpEntity);
+                }
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                if(closeableHttpResponse!=null){
+                    closeableHttpResponse.close();
+                }
+            } catch (IOException e) {
+                System.out.println("httpget----------------------------url:"+url+" error:"+e.getMessage());
+            }
+        }
+        return result;
+    }
+
+    public static String getRealUrl(String url, Map<String, String> params) {
         if (StringUtils.isEmpty(url)) {
             return null;
         }
         String resultUrl;
-        String result = null;
         if (params == null || params.size() == 0) {
             resultUrl = url;
         } else {
             StringBuffer stringBuffer = new StringBuffer();
+            int i=0;
             for (Map.Entry<String, String> map : params.entrySet()) {
-                stringBuffer.append(map.getKey()).append("=").append(map.getValue());
+                if(i==0){
+                    stringBuffer.append(map.getKey()).append("=").append(map.getValue());
+                }else{
+                    stringBuffer.append("&").append(map.getKey()).append("=").append(map.getValue());
+                }
+                i++;
             }
             resultUrl = url + "?" + stringBuffer.toString();
         }
-        synchronized (HttpClientUtils.class) {
-            GetMethod getMethod = new GetMethod(resultUrl);
-            try {
-                if (null != timeOut && timeOut != 0) {
-                    httpClient.getHttpConnectionManager().getParams().setSoTimeout(timeOut);
-                }
-                int statusCode = httpClient.executeMethod(getMethod);
-                if (statusCode == HttpStatus.SC_OK) {
-                    byte[] responseBody = getMethod.getResponseBody();
-                    if (StringUtils.isEmpty(charset)) {
-                        result = new String(responseBody);
-                    } else {
-                        result = new String(responseBody, CHARSET_UTF8);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            } finally {
-                getMethod.releaseConnection();
-            }
-        }
-        return result;
-
+        return resultUrl;
     }
 }
