@@ -33,7 +33,9 @@ public class HttpClientUtils {
 
     private static CloseableHttpClient httpClient = httpClientBuilder.setConnectionManager(poolingHttpClientConnectionManager).build();
 
-    private static final RequestConfig requestConfig = RequestConfig.custom().setProxy(proxy).setSocketTimeout(5000).setConnectTimeout(5000).setConnectionRequestTimeout(5000).build();
+//    private static final RequestConfig requestConfig = RequestConfig.custom().setProxy(proxy).setSocketTimeout(5000).setConnectTimeout(5000).setConnectionRequestTimeout(5000).build();
+
+    private static final RequestConfig requestConfig = RequestConfig.custom().setSocketTimeout(5000).setConnectTimeout(5000).setConnectionRequestTimeout(5000).build();
 
 
 

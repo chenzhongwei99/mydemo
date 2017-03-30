@@ -105,17 +105,17 @@ public class ProductPage implements PageProcessor {
                 Map<String, String> commentParams = new HashMap<String, String>();
                 Map<String, String> shopParams = new HashMap<String, String>();
                 priceParams.put("skuIds", priceBuffer.toString().substring(0, priceBuffer.toString().length() - 1));
-                priceParams.put("pdtk", "P3PzkDhJpw4w0yFmUs2CN0wXDoJNFqc0seOdnunEWpHD8XbpSJCPRTAO6nXZTCRh");
+                priceParams.put("pdtk", "6Uoh0EB1n439twnPRk%2BuVPXYpSBHK514cL1ZjNJwSrDICNJ0w0eX9YcFSFBxians");
                 priceParams.put("pduid", "480222635");
                 commentParams.put("referenceIds", commentBuffer.toString().substring(0, commentBuffer.toString().length() - 1));
                 shopParams.put("pidList", shopBuffer.toString().substring(0, shopBuffer.toString().length() - 1));
 
                 productFutureList.add(productPool.submit(new ProductCallable(priceParams, commentParams, shopParams)));
-                /*try {
-                    Thread.sleep(500);
+                try {
+                    Thread.sleep(10);
                 } catch (InterruptedException e) {
                     e.printStackTrace();
-                }*/
+                }
                 priceBuffer = new StringBuffer();
                 commentBuffer = new StringBuffer();
                 shopBuffer = new StringBuffer();
